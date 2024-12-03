@@ -1,18 +1,20 @@
 import { useNavigate } from "react-router-dom";
-import "../Styles/Logout.css";
+import Cookies from "js-cookie";
+import { LogoutBtn } from "./Logout.Styles";
 
 const Logout = () => {
   const navigate = useNavigate();
 
   const handleClick = () => {
+    Cookies.remove("type");
     navigate("/");
   };
 
   return (
     <div>
-      <button className="logout" onClick={handleClick}>
+      <LogoutBtn className="logout" onClick={handleClick}>
         Logout
-      </button>
+      </LogoutBtn>
     </div>
   );
 };
