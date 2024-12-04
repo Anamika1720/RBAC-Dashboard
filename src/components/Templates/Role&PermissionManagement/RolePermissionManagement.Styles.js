@@ -67,3 +67,17 @@ export const RoleTable = styled.table`
     text-align: left;
   }
 `;
+
+export const StyledInput = styled.input`
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+`;
+
+export const StyledSelect = styled.select`
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+`;
