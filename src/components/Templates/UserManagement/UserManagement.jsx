@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Cookies from "js-cookie";
 import { useUserContext } from "../../../Contexts/Users.Context";
 import AddButton from "../../../Functionalities/AddUser/AddButton";
 import Header from "../../Organisms/Header/Header.Component";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-
 import {
   EditUserForm,
   SearchInput,
@@ -14,14 +13,18 @@ import {
   UserManagementContainer,
 } from "./UserManagement.Styles";
 import ValidMobileNumberInput from "../../../Functionalities/ValidMobileNo";
+import {
+  getCurrentUserPermission,
+  hasPermission,
+} from "../../../services/iam/iam.service";
 
 const UserManagement = () => {
   const userType = Cookies.get("type");
   const { users = [], onAddUser, onEditUser, onDeleteUser } = useUserContext();
 
-  const [editUser, setEditUser] = useState(null);
+  const [editUserId, setEditUserId] = useState(null); // Track user being edited
+  const [editUserData, setEditUserData] = useState(null); // Track user data being edited
   const [searchTerm, setSearchTerm] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [roles, setRoles] = useState([]); // Roles from localStorage
   const [currentPermissions, setCurrentPermissions] = useState([]);
@@ -39,67 +42,80 @@ const UserManagement = () => {
   const handleRoleChange = (newRole) => {
     const permissions = getPermissionsForRole(newRole);
     setCurrentPermissions(permissions);
-    setEditUser((prev) => ({ ...prev, role: newRole, permissions }));
+    setEditUserData((prev) => ({ ...prev, role: newRole, permissions }));
   };
 
   const handleUpdateUser = () => {
     setErrorMessage("");
 
-    if (!editUser?.name || !editUser?.mobileNo || !editUser?.role) {
+    if (!editUserData?.name || !editUserData?.mobileNo || !editUserData?.role) {
       setErrorMessage("Name, Mobile No, and Role are required fields.");
       return;
     }
 
-    if (editUser) {
-      onEditUser(editUser);
-      setEditUser(null);
-      setIsEditing(false);
-    }
+    onEditUser(editUserData);
+    setEditUserId(null); // Reset editing state
+    setEditUserData(null);
   };
 
-  const filteredUsers = users.map((user) => ({
-    ...user,
-    permissions: getPermissionsForRole(user.role),
-  }));
+  const handleCancelEdit = () => {
+    setEditUserId(null); // Reset editing state
+    setEditUserData(null);
+  };
 
-  const renderActions = () => {
-    if (!isEditing) return null;
+  // Filter users based on search term
+  const filteredUsers = useMemo(() => {
+    return users
+      .filter((user) => {
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
+        return (
+          user.name.toLowerCase().includes(lowercasedSearchTerm) ||
+          user.mobileNo.toLowerCase().includes(lowercasedSearchTerm) ||
+          user.role.toLowerCase().includes(lowercasedSearchTerm)
+        );
+      })
+      .map((user) => ({
+        ...user,
+        permissions: getPermissionsForRole(user.role),
+      }));
+  }, [searchTerm, users, roles]);
+
+  const userPermissions = useMemo(() => {
+    return getCurrentUserPermission();
+  }, []);
+
+  const renderActions = (user) => {
+    if (!userPermissions?.Write && !userPermissions?.Delete) return null;
 
     return (
-      <EditUserForm>
-        <h3>Edit User</h3>
-        <input
-          type="text"
-          placeholder="Name"
-          value={editUser?.name || ""}
-          onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
-        />
-        <ValidMobileNumberInput
-          value={editUser?.mobileNo || ""}
-          onChange={(mobileNo) => setEditUser({ ...editUser, mobileNo })}
-        />
-        <select
-          value={editUser?.role || "Select Role"}
-          onChange={(e) => handleRoleChange(e.target.value)}
-        >
-          <option value="Select Role">Select Role</option>
-          {roles.map((role) => (
-            <option key={role.id} value={role.roleName}>
-              {role.roleName}
-            </option>
-          ))}
-        </select>
-        <p>Assigned Permissions: {currentPermissions.join(", ") || "None"}</p>
-        <select
-          value={editUser?.status || "Active"}
-          onChange={(e) => setEditUser({ ...editUser, status: e.target.value })}
-        >
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-        </select>
-        <button onClick={handleUpdateUser}>Update User</button>
-        {errorMessage && <div style={{ color: "red" }}>{errorMessage}</div>}
-      </EditUserForm>
+      <td>
+        {editUserId === user.id ? (
+          <>
+            <button onClick={handleUpdateUser}>Update</button>
+            <button onClick={handleCancelEdit}>Cancel</button>
+          </>
+        ) : (
+          <>
+            {userPermissions?.Write && (
+              <button
+                onClick={() => {
+                  setEditUserId(user.id);
+                  setEditUserData({ ...user });
+                  handleRoleChange(user.role);
+                }}
+              >
+                <EditIcon />
+              </button>
+            )}
+
+            {userPermissions?.Delete && (
+              <button onClick={() => onDeleteUser(user.id)}>
+                <DeleteIcon />
+              </button>
+            )}
+          </>
+        )}
+      </td>
     );
   };
 
@@ -115,7 +131,9 @@ const UserManagement = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        {userType !== "Viewer" && <AddButton onAddUser={onAddUser} />}
+        {(userPermissions?.Write || userPermissions?.Delete) && (
+          <AddButton onAddUser={onAddUser} />
+        )}
         <Table>
           <thead>
             <tr>
@@ -125,43 +143,80 @@ const UserManagement = () => {
               <th>Role</th>
               <th>Permissions</th>
               <th>Status</th>
-              {userType !== "Viewer" && <th>Actions</th>}
+              {(userPermissions?.Write || userPermissions?.Delete) && (
+                <th>Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {filteredUsers.map((user) => (
               <tr key={user.id}>
                 <td>{user.id}</td>
-                <td>{user.name}</td>
-                <td>{user.mobileNo}</td>
-                <td>{user.role}</td>
-                <td>{user.permissions.join(", ")}</td>
+                <td>
+                  {editUserId === user.id ? (
+                    <input
+                      type="text"
+                      value={editUserData?.name || ""}
+                      onChange={(e) =>
+                        setEditUserData({
+                          ...editUserData,
+                          name: e.target.value,
+                        })
+                      }
+                    />
+                  ) : (
+                    user.name
+                  )}
+                </td>
+                <td>
+                  {editUserId === user.id ? (
+                    <ValidMobileNumberInput
+                      value={editUserData?.mobileNo || ""}
+                      onChange={(mobileNo) =>
+                        setEditUserData({ ...editUserData, mobileNo })
+                      }
+                    />
+                  ) : (
+                    user.mobileNo
+                  )}
+                </td>
+                <td>
+                  {editUserId === user.id ? (
+                    <select
+                      value={editUserData?.role || "Select Role"}
+                      onChange={(e) => handleRoleChange(e.target.value)}
+                    >
+                      <option value="Select Role">Select Role</option>
+                      {roles.map((role) => (
+                        <option key={role.id} value={role.roleName}>
+                          {role.roleName}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    user.role
+                  )}
+                </td>
+                <td>
+                  {editUserId === user.id ? (
+                    <p>
+                      Assigned Permissions:{" "}
+                      {(currentPermissions || []).join(", ") || "None"}
+                    </p>
+                  ) : (
+                    (user.permissions || []).join(", ") || "None"
+                  )}
+                </td>
                 <td>
                   <Status className={user.status.toLowerCase()}>
                     {user.status}
                   </Status>
                 </td>
-                {userType !== "Viewer" && (
-                  <td>
-                    <button
-                      onClick={() => {
-                        setEditUser(user);
-                        setIsEditing(true);
-                        handleRoleChange(user.role);
-                      }}
-                    >
-                      <EditIcon />
-                    </button>
-                    <button onClick={() => onDeleteUser(user.id)}>
-                      <DeleteIcon />
-                    </button>
-                  </td>
-                )}
+                {renderActions(user)}
               </tr>
             ))}
           </tbody>
         </Table>
-        {renderActions()}
       </UserManagementContainer>
     </>
   );

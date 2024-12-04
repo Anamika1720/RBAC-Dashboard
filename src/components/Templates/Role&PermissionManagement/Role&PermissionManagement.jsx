@@ -1,46 +1,31 @@
-import { useState, useEffect } from "react";
-import { useUserContext } from "../../../Contexts/Users.Context";
+import { useState, useEffect, useMemo } from "react";
 import Header from "../../Organisms/Header/Header.Component";
 import EditIcon from "@mui/icons-material/Edit";
-import Cookies from "js-cookie";
-
+import SaveIcon from "@mui/icons-material/Save";
+import CancelIcon from "@mui/icons-material/Cancel";
 import {
-  RoleForm,
   RolePermissionContainer,
   RoleTable,
-  SubmitButton,
-  FlexContainer,
   StyledInput,
+  ActionButton,
 } from "./RolePermissionManagement.Styles";
+import { getCurrentUserPermission } from "../../../services/iam/iam.service";
 
 const RolePermissionManagement = () => {
-  const { roles, onSetRoles } = useUserContext();
   const [localRoles, setLocalRoles] = useState([]);
-  const [editingRole, setEditingRole] = useState(null);
+  const [editingRoleId, setEditingRoleId] = useState(null);
   const [newPermissions, setNewPermissions] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
-  const userType = Cookies.get("type");
 
   useEffect(() => {
     const storedRoles = JSON.parse(localStorage.getItem("roles"));
-
-    if (storedRoles && storedRoles.length > 0) {
-      setLocalRoles(storedRoles);
-    } else {
-      const defaultRoles = [
-        { id: 1, roleName: "Admin", permissions: ["Read", "Write", "Delete"] },
-        { id: 2, roleName: "Editor", permissions: ["Read", "Write"] },
-        { id: 3, roleName: "Viewer", permissions: ["Read"] },
-      ];
-      setLocalRoles(defaultRoles);
-      localStorage.setItem("roles", JSON.stringify(defaultRoles));
-    }
+    setLocalRoles(storedRoles);
   }, []);
 
   const handleEditRole = (role) => {
+    setEditingRoleId(role.id);
     setNewPermissions(role.permissions);
-    setEditingRole(role.id);
   };
 
   const handleUpdateRole = () => {
@@ -49,13 +34,20 @@ const RolePermissionManagement = () => {
       return;
     }
     const updatedRoles = localRoles.map((role) =>
-      role.id === editingRole ? { ...role, permissions: newPermissions } : role
+      role.id === editingRoleId
+        ? { ...role, permissions: newPermissions }
+        : role
     );
     setLocalRoles(updatedRoles);
     localStorage.setItem("roles", JSON.stringify(updatedRoles));
-    setEditingRole(null);
+    setEditingRoleId(null);
     setNewPermissions([]);
     setError("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRoleId(null);
+    setNewPermissions([]);
   };
 
   const handlePermissionChange = (permission) => {
@@ -70,6 +62,10 @@ const RolePermissionManagement = () => {
     role.roleName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const userPermissions = useMemo(() => {
+    return getCurrentUserPermission();
+  }, []);
+
   return (
     <>
       <Header />
@@ -80,7 +76,7 @@ const RolePermissionManagement = () => {
           placeholder="Search Roles..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ marginBottom: "20px", padding: "8px", width: "200px" }}
+          style={{ marginBottom: "20px", padding: "8px" }}
         />
         <RoleTable>
           <thead>
@@ -88,78 +84,69 @@ const RolePermissionManagement = () => {
               <th>ID</th>
               <th>Role Name</th>
               <th>Permissions</th>
-              {userType !== "Viewer" && userType !== "Editor" && (
-                <th>Actions</th>
+              {(userPermissions?.Write || userPermissions?.Delete) && (
+                <th className="actions">Actions</th>
               )}
             </tr>
           </thead>
           <tbody>
             {filteredRoles.map((role) => (
               <tr key={role.id}>
-                <td>{role.id}</td>
-                <td>{role.roleName}</td>
-                <td>{role.permissions.join(", ")}</td>
-                {userType !== "Viewer" && userType !== "Editor" && (
-                  <td>
-                    <button onClick={() => handleEditRole(role)}>
-                      <EditIcon />
-                    </button>
+                <td className="id">{role.id}</td>
+                <td className="role">{role.roleName}</td>
+                <td className="permissions">
+                  {editingRoleId === role.id ? (
+                    <div>
+                      {["Read", "Write", "Delete"].map((perm) => (
+                        <label key={perm}>
+                          <StyledInput
+                            type="checkbox"
+                            checked={newPermissions.includes(perm)}
+                            onChange={() => handlePermissionChange(perm)}
+                          />
+                          {perm}
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    role.permissions.join(", ")
+                  )}
+                </td>
+
+                {(userPermissions?.Write || userPermissions?.Delete) && (
+                  <td className="actions">
+                    {editingRoleId === role.id ? (
+                      <>
+                        <ActionButton
+                          className="save"
+                          onClick={handleUpdateRole}
+                        >
+                          <SaveIcon /> Update
+                        </ActionButton>
+                        <ActionButton
+                          className="cancel"
+                          onClick={handleCancelEdit}
+                        >
+                          <CancelIcon /> Cancel
+                        </ActionButton>
+                      </>
+                    ) : (
+                      userPermissions?.Write && (
+                        <ActionButton
+                          className="edit"
+                          onClick={() => handleEditRole(role)}
+                        >
+                          <EditIcon /> Edit
+                        </ActionButton>
+                      )
+                    )}
                   </td>
                 )}
               </tr>
             ))}
           </tbody>
         </RoleTable>
-        {editingRole && (
-          <RoleForm>
-            <FlexContainer>
-              <div>
-                <label>Role Name:</label>
-                <StyledInput
-                  type="text"
-                  value={
-                    localRoles.find((role) => role.id === editingRole)
-                      ?.roleName || ""
-                  }
-                  disabled
-                />
-              </div>
-              <div>
-                <label>Permissions:</label>
-                <label>
-                  <StyledInput
-                    type="checkbox"
-                    checked={newPermissions.includes("Read")}
-                    onChange={() => handlePermissionChange("Read")}
-                  />
-                  Read
-                </label>
-                <label>
-                  <StyledInput
-                    type="checkbox"
-                    checked={newPermissions.includes("Write")}
-                    onChange={() => handlePermissionChange("Write")}
-                  />
-                  Write
-                </label>
-                <label>
-                  <StyledInput
-                    type="checkbox"
-                    checked={newPermissions.includes("Delete")}
-                    onChange={() => handlePermissionChange("Delete")}
-                  />
-                  Delete
-                </label>
-              </div>
-              <SubmitButton onClick={handleUpdateRole}>
-                Update Permissions
-              </SubmitButton>
-            </FlexContainer>
-            {error && (
-              <div style={{ color: "red", marginTop: "10px" }}>{error}</div>
-            )}
-          </RoleForm>
-        )}
+        {error && <div style={{ color: "red" }}>{error}</div>}
       </RolePermissionContainer>
     </>
   );

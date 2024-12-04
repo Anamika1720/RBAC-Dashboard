@@ -30,8 +30,13 @@ export const Card = styled.div`
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   width: 250px;
+  height: 250px;
   padding: 20px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   }
 `;
 
@@ -49,6 +54,7 @@ export const CardButton = styled.button`
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  display: flex;
 
   &:hover {
     background-color: #4caf50;

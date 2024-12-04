@@ -9,6 +9,7 @@ import {
   Page,
   Title,
 } from "./Homepage.Style";
+import { Settings } from "@mui/icons-material";
 
 const Homepage = () => {
   const loggedIn = Cookies.get("type");
@@ -22,13 +23,19 @@ const Homepage = () => {
           <Card>
             <CardTitle>My Users</CardTitle>
             <Link to="/user-management">
-              <CardButton>Manage</CardButton>
+              <CardButton>
+                Manage
+                <Settings />
+              </CardButton>
             </Link>
           </Card>
           <Card>
             <CardTitle>Roles & Permissions</CardTitle>
             <Link to="/role-permission-management">
-              <CardButton>Manage</CardButton>
+              <CardButton>
+                Manage
+                <Settings />
+              </CardButton>
             </Link>
           </Card>
         </CardContainer>

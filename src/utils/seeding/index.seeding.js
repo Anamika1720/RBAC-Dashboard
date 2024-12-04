@@ -3,5 +3,5 @@ import { initUsers } from "./users.seeding";
 
 export const initSeeding = () => {
   initUsers();
-  // initRoles();
+  initRoles();
 };
