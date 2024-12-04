@@ -24,11 +24,19 @@ const RolePermissionManagement = () => {
   }, []);
 
   const handleEditRole = (role) => {
+    if (role.roleName.toLowerCase() === "admin") {
+      setError("You cannot edit the admin role.");
+      return;
+    }
     setEditingRoleId(role.id);
     setNewPermissions(role.permissions);
   };
-
   const handleUpdateRole = () => {
+    const editingRole = localRoles.find((role) => role.id === editingRoleId);
+    if (editingRole?.roleName.toLowerCase() === "admin") {
+      setError("You cannot update the admin role.");
+      return;
+    }
     if (newPermissions.length === 0) {
       setError("At least one permission is required.");
       return;

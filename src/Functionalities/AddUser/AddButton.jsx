@@ -17,20 +17,32 @@ const AddButton = ({ onAddUser }) => {
   });
 
   const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState(""); // Error state
 
   const handleAddUser = () => {
-    if (!newUser.name || !newUser.mobileNo || newUser.role === "Select Role") {
-      alert("Please fill out all required fields.");
+    // Validation
+    if (
+      !newUser.name.trim() ||
+      !newUser.mobileNo.trim() ||
+      newUser.role === "Select Role" ||
+      !["Active", "Inactive"].includes(newUser.status)
+    ) {
+      setError("Please fill out all required fields.");
       return;
     }
+
+    // Pass the new user data to the parent component
     onAddUser(newUser);
+
+    // Reset form
     setNewUser({
       name: "",
       mobileNo: "",
       role: "Select Role",
       status: "Active",
     });
-    setShowForm(false);
+    setError(""); // Clear any existing errors
+    setShowForm(false); // Close the form
   };
 
   return (
@@ -39,6 +51,8 @@ const AddButton = ({ onAddUser }) => {
       {showForm && (
         <FormContainer>
           <h3>Add New User</h3>
+          {error && <p style={{ color: "red" }}>{error}</p>}{" "}
+          {/* Display error */}
           <FormRow>
             <StyledInput
               type="text"
@@ -60,7 +74,7 @@ const AddButton = ({ onAddUser }) => {
             >
               <option value="Select Role">Select Role</option>
               <option value="Admin">Admin</option>
-              <option value="User">User</option>
+              <option value="Editor">Editor</option>
               <option value="Viewer">Viewer</option>
             </StyledSelect>
             <StyledSelect

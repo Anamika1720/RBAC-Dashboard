@@ -199,18 +199,30 @@ const UserManagement = () => {
                 </td>
                 <td>
                   {editUserId === user.id ? (
-                    <p>
-                      Assigned Permissions:{" "}
-                      {(currentPermissions || []).join(", ") || "None"}
-                    </p>
+                    <p> {(currentPermissions || []).join(", ") || "None"}</p>
                   ) : (
                     (user.permissions || []).join(", ") || "None"
                   )}
                 </td>
                 <td>
-                  <Status className={user.status.toLowerCase()}>
-                    {user.status}
-                  </Status>
+                  {editUserId === user.id ? (
+                    <select
+                      value={editUserData?.status || "active"}
+                      onChange={(e) =>
+                        setEditUserData({
+                          ...editUserData,
+                          status: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  ) : (
+                    <span className={user.status.toLowerCase()}>
+                      {user.status}
+                    </span>
+                  )}
                 </td>
                 {renderActions(user)}
               </tr>

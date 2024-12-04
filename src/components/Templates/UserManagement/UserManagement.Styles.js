@@ -18,8 +18,9 @@ export const UserCard = styled.div`
 `;
 
 export const Status = styled.span`
-  padding: 5px;
-  border-radius: 5px;
+  background: none;
+  padding: 0;
+  border: none;
 `;
 
 export const EditUserForm = styled.div`
